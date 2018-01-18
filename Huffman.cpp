@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <iterator>
+#include "string.h"
 
 using namespace std;
 
@@ -73,7 +74,7 @@ Node* HuffmanTree(map<int, int> table){
 	priority_queue<Node*, vector<Node*>, compare> heap;
 
 	for(auto it = table.begin(); it != table.end(); ++it){
-		heap.push(new LeafNode(table->first, table->second));
+		heap.push(new LeafNode(it->first, it->second));
 	}
 
 	while (heap.size() != 1) {
@@ -128,11 +129,11 @@ Node* HuffmanTree(vector<int> v){
 map<int, string> HuffmanCode(Node* n, string c){
 	map<int, string> codeMap;
 	if(LeafNode* ln = dynamic_cast<LeafNode*>(n)){
-		codeMap.insert(make_pair(ln->data, string));
+		codeMap.insert(make_pair(ln->data, c));
 	}
 	else if(ParentNode* pn = dynamic_cast<ParentNode*>(n)){
-		string lc = code + "0";
-		string rc = code + "1";
+		string lc = c + "0";
+		string rc = c + "1";
 
 		map<int, string> lRet = HuffmanCode(pn->left, lc);
 		codeMap.insert(lRet.begin(), lRet.end());
@@ -140,6 +141,7 @@ map<int, string> HuffmanCode(Node* n, string c){
 		map<int, string> rRet = HuffmanCode(pn->right, rc);
 		codeMap.insert(rRet.begin(), rRet.end());
 	}
+	return codeMap;
 }
 
 /*
@@ -168,54 +170,184 @@ map<int, vector<bool> > HuffmanCode(Node* n, vector<bool> code){
 */
 
 // Use the above functions and make a file based on the encoding created.
-void HuffmanEncode(){
+void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fileSize){
 	char* retMemblock;
 
-	Node* root = HuffmanTree(v);
+	Node* root = HuffmanTree(m);
+	map<int, string > encodingTable = HuffmanCode(root, "");
 
-	map<int, vector<bool> > m = HuffmanCode(root, "");
-
-	for(map<int, vector<bool> >::const_iterator it = m.begin(); it != m.end(); ++it){
-		char t = it->first;
-		cout << t << " ";
-		copy(it -> second.begin(), it->second.end(), ostream_iterator<bool>(cout));
-		cout << endl;
+	for(map<int, string>::const_iterator it = encodingTable.begin(); it != encodingTable.end(); ++it){
+		cout << (char)it->first << endl;
+		cout << it->first << " " << it->second << endl;
 	}
 
 	ofstream outputFile ("Encoded"+fileName);
 
+	// Write heading to the file,
+	outputFile.put('{');
+	/*
+	for(map<int, string>::const_iterator it = encodingTable.begin(); it != encodingTable.end(); ++it){
+		if(it != encodingTable.begin()){
+			outputFile.put('|');
+		}
+
+		outputFile.put(it->first);
+		outputFile.put(':');
+		for(int i = 0; i < (it->second).size(); i++){
+			outputFile.put((it->second)[i]);
+		}
+
+	}
+	*/
+	cout << "Writing frequencies to the file" << endl;
+	for(map<int, int>::const_iterator it = m.begin(); it != m.end(); ++it){
+		if(it != m.begin()){
+			outputFile.put('|');
+		}
+		outputFile.put(it->first);
+		outputFile.put(':');
+		cout << it->second << endl;
+		outputFile.put((it->second + '0'));
+	}
+	outputFile.put('}');
+	cout << "Done with frequencies" << endl;
+
 	uint8_t c = 0;
 	int bitPos = 7;
-	//printf("%d\n",fileSize);
 
-	for(int i = 0; i < fileSize; i++){
-		//printf("%d\n",i);
-		//printf("Searching for %d\n", memblock[i]);
-		vector<bool> b = m.find(memblock[i])->second;
+	int counter = 0;
+	while(counter <= fileSize + 1){
+		int input = memblock[counter];
+		cout << input << endl;
 
-		for(int j = 0; j < b.size(); j++){
-			printf("%d\n", bitPos);
-			if(b[j] == false){
-				c &= ~(1 << bitPos);
+		if(input == -1){
+			for(int i = 0; i < encodingTable.find(256)->second.size(); i++){
+				if(encodingTable.at(256)[i] == '0'){
+					c &= ~(1 << bitPos);
+				}
+				else{
+					c |= 1 << bitPos;
+				}
+				if(bitPos == 0){
+					outputFile.put(c);
+					c = 0;
+					//printf("\n");
+					bitPos = 7;
+				}
+				else{
+					bitPos--;
+				}
 			}
-			else{
-				c |= 1 << bitPos;
-			}
-			printf("%d\n", c);
-			if(bitPos == 0){
-				outputFile.put(c);
-				c = 0;
-				printf("\n");
-				bitPos = 7;
-			}
-			else{
-				bitPos--;
+			break;
+		}
+		else{
+			for(int i = 0; i < encodingTable.find(input)->second.size(); i++){
+				if((encodingTable.find(input)->second)[i] == '0'){
+					c &= ~(1 << bitPos);
+				}
+				else{
+					c |= 1 << bitPos;
+				}
+				if(bitPos == 0){
+					outputFile.put(c);
+					c = 0;
+					//printf("\n");
+					bitPos = 7;
+				}
+				else{
+					bitPos--;
+				}
 			}
 		}
+		counter++;
 	}
 	outputFile.close();
 }
 
-void HuffmanDecode(){
+int getCharFromBits(Node* n, string c){
+	if(LeafNode* ln = dynamic_cast<LeafNode*>(n)){
+		return ln->data;
+	}
+	else if(ParentNode* pn = dynamic_cast<ParentNode*>(n)){
+		if(c[0] == "0"){
+			return getCharFromBits(pn->left,c.erase(0,1));
+		}
+		else{
+			return getCharFromBits(pn->right,c.erase(0,1));
+		}
+	}
+}
 
+string getBit(unsigned char byte, int position){
+	return ((byte >> position) & 0x1) ? "1" : "0";
+}
+
+string getByteAsBits(unsigned char b){
+	string str = "";
+	for(int i = 0; i < 7; i++){
+		str += getBit(b, i);
+	}
+	return str;
+}
+
+void HuffmanDecode(ifstream &ifs, ofstream &ofs){
+	//
+	//	Get the count table
+	//
+	map<int, int> countTable;
+	// Gets the first {
+	ifs.get();
+	char c;
+	while((c = ifs.get()) != '}'){
+		int count;
+		// Gets the :
+		ifs.get();
+		string cp;
+		while((cp = ifs.get()) != "|" && cp != "}"){
+			count = stoi(cp);
+		}
+		countTable.insert(make_pair(c, count));
+		if(cp == "}"){
+			break;
+		}
+	}
+
+	c = ifs.get();
+	string bitString = decodeByte(c);
+
+	// Build the tree from the count table
+	Node* root = HuffmanTree(countTable);
+	// Need this for the size of our "EOF" char (might be a better way to get it, but can't come up with it right now)
+	map<int, string> encodingTable = HuffmanCode(root, "");
+
+	// Here we travese our huffman tree 1 "bit" at a time and reset once we reach a leaf node and get a char.
+	string temp = "";
+	string end = encodingTable.find(256)->second;
+	Node* currentNode = root;
+	while(!bitString.substr(0,end.size()).compare(end)){
+		// If we are at a leaf we have found our wanted char, so we reset the currentNode and add the char to our outstream
+		if(LeafNode* ln = dynamic_cast<LeafNode*>(currentNode)){
+			temp += (char)(ln->data);
+			currentNode = root;
+		}
+		// If we have not found a leaf node we keep traversing down and remove the first char in our string
+		else if(ParentNode* pn = dynamic_cast<ParentNode*>(currentNode)){
+			if(bitString[0] == "0"){
+				currentNode = pn->left;
+				bitString.erase(0, 1);
+			}
+			else{
+				currentNode = pn->right;
+				bitString.erase(0, 1);
+			}
+		}
+		// If our current bitstring is smaller than the size of the "EOF" char, we need to read more bytes.
+		if(bitString.size() < end.size()){
+			double sizeDiff = abs(bitString.size() - end.size());
+			double readsNeeded = ceil(sizeDiff);
+			for(int i = 0; i < (int)readsNeeded; i++){
+				bitString += getByteAsBits(ifs.get());
+			}
+		}
+	}
 }

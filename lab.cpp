@@ -83,17 +83,22 @@ int main(int argc, char* argv[]){
 	ifstream file(fileName, ios::in|ios::binary|ios::ate);
 
 	// Read file to memory
+
 	if(file.is_open()){
 		filesize = file.tellg();
-		memblock = new char [filesize];
+		memblock = new char [filesize + 1];
 		file.seekg(0, ios::beg);
 		file.read(memblock, filesize);
-		file.close();
+		file.seekg(0,ios::beg);
+		memblock[filesize] = -1;
+		//file.close();
 	}
+
 
 	map<int, int> table;
 	while (true) {
 		int input = file.get();
+		cout << "Input is: " << input << endl;
 		if(input == -1){
 			table.insert(make_pair(256, 1));
 			break;
@@ -106,17 +111,20 @@ int main(int argc, char* argv[]){
 		}
 	}
 
+	/*
 	vector<int> count(256);
 	cout << filesize << endl;
 	for(int i = 0; i < filesize; i++){
 		printf("%d\n", memblock[i]);
 		count[memblock[i]]++;
 	}
+	*/
 
 	vector<string> splitStr = string_split(fileName, '.');
 
-	HuffmanEncode(memblock, filesize, count, splitStr[0]);
-	cout << entropy(count, filesize) << endl;
+	//ifstream f(fileName, ios::in|ios::binary|ios::ate);
+	HuffmanEncode(table,splitStr[0], memblock, filesize);
+	//cout << entropy(count, filesize) << endl;
 
 return 0;
 }
