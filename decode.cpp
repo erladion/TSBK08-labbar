@@ -48,8 +48,8 @@ vector<string> string_split(string s, const char delimiter)
 // Argument 2 = file name
 
 int main(int argc, char* argv[]){
-	ios::sync_with_stdio(false);
-  cin.tie(NULL);
+	//ios::sync_with_stdio(false);
+  //cin.tie(NULL);
 
 	string fileName = "";
 	fileName = argv[1];
@@ -70,7 +70,7 @@ int main(int argc, char* argv[]){
 	}
 	vector<string> splitStr = string_split(fileName, '.');
 
-	ofstream outputFile("decoded" + splitStr[0]);
+	ofstream outputFile("decoded" + splitStr[0], ofstream::binary);
 
 	HuffmanDecode(file, outputFile);
 

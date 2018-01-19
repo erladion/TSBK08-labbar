@@ -182,7 +182,7 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 		cout << it->first << " " << it->second << endl;
 	}
 
-	ofstream outputFile ("Encoded"+fileName, ios::binary|ios::out|ios::trunc);
+	ofstream outputFile ("Encoded"+fileName, ofstream::binary);
 
 	// Write heading to the file,
 	outputFile.put('{');
@@ -318,7 +318,7 @@ string getBit(unsigned char byte, int position){
 
 string getByteAsBits(unsigned char b){
 	string str = "";
-	for(int i = 0; i <= 7; i++){
+	for(int i = 7; i >= 0; i--){
 		str += getBit(b, i);
 	}
 	return str;
@@ -339,14 +339,19 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 		int count;
 		// Gets the :
 		ifs.get();
-		char c2;
+
 		string cp = "";
 		// Get the count of char c, need a while loop since we only get 1 byte at a time, so if count is 13 we need to loop 2 times to get it
 		// first byte is 1 and second byte is 3.
-		while((c2 = ifs.get()) != '|' && c2 != '}'){
+		char c2 = ifs.get();
+		cout << c2 << endl;
+		while(c2 != '|' && c2 != '}'){
+			cout << c2 << endl;
 			cp += string(1,c2);
 			count = stoi(cp);
 			printf("Count: %d\n", count);
+			c2 = ifs.get();
+			cout << c2 << endl;
 		}
 		countTable.insert(make_pair(c, count));
 		if(c2 == '}'){
@@ -371,13 +376,15 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 
 	c = ifs.get();
 	string bitString = getByteAsBits(c);
+	cout << (uint8_t)c << endl;
+	cout << bitString << endl;
 
 	while(c != -1){
 		// If we are at a leaf we have found our wanted char, so we reset the currentNode and add the char to our outstream
 		if(LeafNode* ln = dynamic_cast<LeafNode*>(currentNode)){
-			//if(ln->data == 256){
-			//	break;
-			//}
+			if(ln->data == 256){
+				break;
+			}
 			cout << "Leaf" << endl;
 			ofs.put((char)(ln->data));
 			currentNode = root;
