@@ -177,30 +177,10 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 	Node* root = HuffmanTree(m);
 	map<int, string > encodingTable = HuffmanCode(root, "");
 
-	for(map<int, string>::const_iterator it = encodingTable.begin(); it != encodingTable.end(); ++it){
-		cout << (char)it->first << endl;
-		cout << it->first << " " << it->second << endl;
-	}
-
 	ofstream outputFile ("Encoded"+fileName, ofstream::binary);
 
 	// Write heading to the file,
 	outputFile.put('{');
-	/*
-	for(map<int, string>::const_iterator it = encodingTable.begin(); it != encodingTable.end(); ++it){
-		if(it != encodingTable.begin()){
-			outputFile.put('|');
-		}
-
-		outputFile.put(it->first);
-		outputFile.put(':');
-		for(int i = 0; i < (it->second).size(); i++){
-			outputFile.put((it->second)[i]);
-		}
-
-	}
-	*/
-	cout << "Writing frequencies to the file" << endl;
 	for(map<int, int>::const_iterator it = m.begin(); it != m.end(); ++it){
 		if(it->first == 256){
 			continue;
@@ -209,57 +189,35 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 			outputFile.put('|');
 		}
 		outputFile.put(it->first);
-		cout << it->first << endl;
 		outputFile.put(':');
-		cout << it->second << endl;
 		outputFile.put((it->second + '0'));
 	}
 	outputFile.put('}');
-	cout << "Done with frequencies" << endl;
 
 	uint8_t c = 0x00;
 	int bitPos = 7;
-
 	int counter = 0;
-
 
 	while(counter <= fileSize + 1){
 		int input = memblock[counter];
-		bitset<8> y(c);
-		cout << "Start bitset: ";
-		cout << y << endl;
-		cout << input << endl;
-
-		//cout << encodingTable.find(256)->second << endl;
 
 		if(input == -1){
 			for(int i = 0; i < encodingTable.find(256)->second.size(); i++){
 				if((encodingTable.find(256)->second)[i] == '0'){
-					//cout << "0";
 					c &= ~(1 << bitPos);
-					bitset<8> x(c);
-					cout << "Bitset is now: ";
-					cout << x << endl;
 				}
 				else{
-					//cout << "1";
 					c |= 1 << bitPos;
-					bitset<8> x(c);
-					cout << "Bitset is now: ";
-					cout << x << endl;
 				}
 				if(bitPos == 0){
-					printf("C is now: %d\n", c);
 					outputFile.put(c);
 					c = 0x00;
-					//printf("\n");
 					bitPos = 7;
 				}
 				else{
 					bitPos--;
 				}
 			}
-			printf("C is now: %d\n", c);
 			outputFile.put(c);
 			break;
 		}
@@ -268,48 +226,23 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 			for(int i = 0; i < encodingTable.find(input)->second.size(); i++){
 				if((encodingTable.find(input)->second)[i] == '0'){
 					c &= ~(1 << bitPos);
-					bitset<8> x(c);
-					cout << "Bitset is now: ";
-					cout << x << endl;
-					//cout << "0";
 				}
 				else{
-					//cout << "1";
 					c |= 1 << bitPos;
-					bitset<8> x(c);
-					cout << "Bitset is now: ";
-					cout << x << endl;
 				}
 				if(bitPos == 0){
-					printf("C is now: %d\n", c);
 					outputFile.put(c);
 					c = 0x00;
-					//printf("\n");
 					bitPos = 7;
 				}
 				else{
 					bitPos--;
 				}
 			}
-			cout << endl;
 		}
 		counter++;
 	}
 	outputFile.close();
-}
-
-int getCharFromBits(Node* n, string c){
-	if(LeafNode* ln = dynamic_cast<LeafNode*>(n)){
-		return ln->data;
-	}
-	else if(ParentNode* pn = dynamic_cast<ParentNode*>(n)){
-		if(c.substr(0, 1) == "0"){
-			return getCharFromBits(pn->left,c.erase(0,1));
-		}
-		else{
-			return getCharFromBits(pn->right,c.erase(0,1));
-		}
-	}
 }
 
 string getBit(unsigned char byte, int position){
@@ -335,7 +268,6 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 	ifs.get();
 	char c;
 	while((c = ifs.get()) != '}'){
-		printf("Current char: %d\n", c);
 		int count;
 		// Gets the :
 		ifs.get();
@@ -343,15 +275,10 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 		string cp = "";
 		// Get the count of char c, need a while loop since we only get 1 byte at a time, so if count is 13 we need to loop 2 times to get it
 		// first byte is 1 and second byte is 3.
-		char c2 = ifs.get();
-		cout << c2 << endl;
-		while(c2 != '|' && c2 != '}'){
-			cout << c2 << endl;
+		char c2;
+		while((c2 = ifs.get())!= '|' && c2 != '}'){
 			cp += string(1,c2);
 			count = stoi(cp);
-			printf("Count: %d\n", count);
-			c2 = ifs.get();
-			cout << c2 << endl;
 		}
 		countTable.insert(make_pair(c, count));
 		if(c2 == '}'){
@@ -364,10 +291,6 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 	// Need this for the size of our "EOF" char (might be a better way to get it, but can't come up with it right now)
 	map<int, string> encodingTable = HuffmanCode(root, "");
 
-	for(map<int, string>::const_iterator it = encodingTable.begin(); it != encodingTable.end(); ++it){
-		cout << it->first << " " << it->second << endl;
-	}
-
 	// Here we travese our huffman tree 1 "bit" at a time and reset once we reach a leaf node and get a char.
 	// Keep going until we hit the end of the file.
 	string temp = "";
@@ -376,8 +299,6 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 
 	c = ifs.get();
 	string bitString = getByteAsBits(c);
-	cout << (uint8_t)c << endl;
-	cout << bitString << endl;
 
 	while(c != -1){
 		// If we are at a leaf we have found our wanted char, so we reset the currentNode and add the char to our outstream
@@ -385,27 +306,22 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 			if(ln->data == 256){
 				break;
 			}
-			cout << "Leaf" << endl;
 			ofs.put((char)(ln->data));
 			currentNode = root;
 		}
 		// If we have not found a leaf node we keep traversing down and remove the first char in our string
 		else if(ParentNode* pn = dynamic_cast<ParentNode*>(currentNode)){
 			if(bitString.substr(0,1) == "0"){
-				cout << "Left" << endl;
 				currentNode = pn->left;
 				bitString.erase(0, 1);
 			}
 			else{
-				cout << "Right" << endl;
 				currentNode = pn->right;
 				bitString.erase(0, 1);
 			}
 			if(bitString.size() == 0){
 				c = ifs.get();
-				cout << c << endl;
 				bitString += getByteAsBits(c);
-				cout << bitString << endl;
 			}
 		}
 		// If our current bitstring is smaller than the size of the "EOF" char, we need to read more bytes.
@@ -415,9 +331,7 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 			double readsNeeded = ceil(sizeDiff);
 			for(int i = 0; i < (int)readsNeeded; i++){
 				c = ifs.get();
-				cout << c << endl;
 				bitString += getByteAsBits(c);
-				cout << bitString << endl;
 			}
 		}
 	}

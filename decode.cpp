@@ -53,7 +53,6 @@ int main(int argc, char* argv[]){
 
 	string fileName = "";
 	fileName = argv[1];
-	std::cout << fileName << std::endl;
 	streampos filesize;
 	char * memblock;
 
@@ -66,12 +65,11 @@ int main(int argc, char* argv[]){
 		file.read(memblock, filesize);
 		file.seekg(0,ios::beg);
 		memblock[filesize] = -1;
-		//file.close();
 	}
 	vector<string> splitStr = string_split(fileName, '.');
 
 	ofstream outputFile("decoded" + splitStr[0], ofstream::binary);
 
 	HuffmanDecode(file, outputFile);
-
+	file.close();
 }
