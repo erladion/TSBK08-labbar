@@ -68,7 +68,7 @@ int main(int argc, char* argv[]){
 	}
 	vector<string> splitStr = string_split(fileName, '.');
 
-	ofstream outputFile("decoded" + fileName, ios::binary);
+	ofstream outputFile("Decoded" + fileName, ios::binary);
 
 	cout << "Decoding file: " << fileName << endl;
 	HuffmanDecode(file, outputFile);

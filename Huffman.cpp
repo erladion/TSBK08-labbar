@@ -101,7 +101,8 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 	*/
 
 	// Write heading to the file,
-	ofs.put('{');
+	ofs.put('<');
+	ofs.put('\\');
 	for(auto it = m.begin(); it != m.end(); ++it){
 		if(it->first == 256){
 			continue;
@@ -116,11 +117,13 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 			ofs.put(numStr[i]);
 		}
 	}
-	ofs.put('}');
+	ofs.put('/');
+	ofs.put('>');
 
 	uint8_t c = 0x00;
 	int bitPos = 7;
 	int counter = 0;
+	int writtenBytesCounter = 0;
 
 	while(counter <= fileSize + 1){
 		int input = memblock[counter];
@@ -134,6 +137,7 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 					c |= 1 << bitPos;
 				}
 				if(bitPos == 0){
+					writtenBytesCounter++;
 					ofs.put(c);
 					c = 0x00;
 					bitPos = 7;
@@ -142,6 +146,7 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 					bitPos--;
 				}
 			}
+			writtenBytesCounter++;
 			ofs.put(c);
 			break;
 		}
@@ -155,6 +160,7 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 					c |= 1 << bitPos;
 				}
 				if(bitPos == 0){
+					writtenBytesCounter++;
 					ofs.put(c);
 					c = 0x00;
 					bitPos = 7;
@@ -167,6 +173,7 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 		counter++;
 	}
 	ofs.close();
+	cout << "Wrote: " << writtenBytesCounter << " bytes to file!" << endl;
 	cout << "Encoding done!" << endl;
 }
 
@@ -187,29 +194,41 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 	//	Get the count table
 	//
 	map<int, int> countTable;
-	// Since we can't put "EOF" in the frequency table in the file, we just add it here manually
-	countTable.insert(make_pair(256, 1));
-	// Gets the first {
+	// Gets the first <
+	ifs.get();
+	// Gets the following backslash "\"
 	ifs.get();
 	char c;
-	while((c = ifs.get()) != '}'){
-		int count;
-		// Gets the :
-		ifs.get();
+	while((c = ifs.get()) != -1){
+		if(c == '/'){
+			char check = ifs.get();
+			if(check == '>'){
+				break;
+			}
+		}
+		else{
+			// Gets the :
+			ifs.get();
+		}
 
+		int count;
 		string cp = "";
 		// Get the count of char c, need a while loop since we only get 1 byte at a time, so if count is 13 we need to loop 2 times to get it
-		// first byte is 1 and second byte is 3.
+		// first byte is 1 and second byte is 	3.
 		char c2;
-		while((c2 = ifs.get())!= '|' && c2 != '}'){
+		while((c2 = ifs.get())!= '|' && c2 != '/'){
 			cp += string(1,c2);
 			count = stoi(cp);
 		}
 		countTable.insert(make_pair(c, count));
-		if(c2 == '}'){
+		if(c2 == '/'){
+			ifs.get();
 			break;
 		}
 	}
+	// Since we can't put "EOF" in the frequency table in the file, we just add it here manually
+	countTable.insert(make_pair(256, 1));
+
 	/*
 	for(auto it = countTable.begin(); it != countTable.end(); it++){
 		cout << it->first << " " << it->second << endl;
@@ -220,6 +239,11 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 	Node* root = HuffmanTree(countTable);
 	// Need this for the size of our "EOF" char (might be a better way to get it, but can't come up with it right now)
 	map<int, string> encodingTable = HuffmanCode(root, "");
+	/*
+	for(auto it = encodingTable.begin(); it != encodingTable.end(); it++){
+		cout << it->first << " " << it->second << endl;
+	}
+	*/
 
 	// Here we travese our huffman tree 1 "bit" at a time and reset once we reach a leaf node and get a char.
 	// Keep going until we hit the end of the file.
@@ -228,11 +252,18 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 	Node* currentNode = root;
 
 	c = ifs.get();
+	//cout << "Read: " << (int)c << endl;
 	string bitString = getByteAsBits(c);
+	int counter = 0;
 
-	while(c != -1){
+	int readsDone = 1;
+
+	while(true){
+		//cout << "Round: " << counter << endl;
+		//cout << "Current bitstring sequence: " + bitString << endl;
 		// If we are at a leaf we have found our wanted char, so we reset the currentNode and add the char to our outstream
 		if(LeafNode* ln = dynamic_cast<LeafNode*>(currentNode)){
+			//cout << "Found a leaf: " << ln->data << " with encoding: " << encodingTable.find(ln->data)->second << endl;
 			if(ln->data == 256){
 				break;
 			}
@@ -251,20 +282,28 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 			}
 			if(bitString.size() == 0){
 				c = ifs.get();
+				readsDone++;
 				bitString += getByteAsBits(c);
 			}
 		}
 		// If our current bitstring is smaller than the size of the "EOF" char, we need to read more bytes.
 		// Will happen when the file contains alot of different bytes
-		if(bitString.size() < end.size()){
-			double sizeDiff = abs(bitString.size() - end.size());
-			double readsNeeded = ceil(sizeDiff);
+		//cout << "Size of bitstring: " << bitString.size() << " Size of EOF: " << end.size() << endl;
+		if(bitString.size() < end.size() && end.size() > 7){
+			double sizeDiff = abs(end.size() - bitString.size());
+			//cout << "Size difference: " << sizeDiff << endl;
+			double readsNeeded = ceil(sizeDiff/8);
+			//cout << "Reads needed: " << readsNeeded << endl;
 			for(int i = 0; i < (int)readsNeeded; i++){
 				c = ifs.get();
+				readsDone++;
 				bitString += getByteAsBits(c);
 			}
 		}
+		counter++;
+		//cout << "Current c: " << (int)c << endl;
 	}
 	ofs.close();
+	cout << "Bytes read: " << readsDone << endl;
 	cout << "Decoding done!" << endl;
 }

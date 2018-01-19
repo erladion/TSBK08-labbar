@@ -114,8 +114,9 @@ int main(int argc, char* argv[]){
 	}
 	*/
 
+
 	vector<string> splitStr = string_split(fileName, '.');
-	ofstream outputFile("Encoded" + fileName, ios::binary|ios::ate);
+	ofstream outputFile("Encoded" + fileName, ios::binary|ios::out|ios::trunc);
 	cout << "Encoding file: " << fileName << endl;
 	HuffmanEncode(table,outputFile, memblock, fileSize);
 	file.close();
