@@ -30,7 +30,7 @@ double log256(double p){
 double entropy(vector<int> count, int fileSize){
 	double entropy = 0;
 
-	for (int i = 0; i < count.size(); i++)
+	for (size_t i = 0; i < count.size(); i++)
 	{
 		// Check here so that a count is never 0, as that neither adds any entropy and may cause errors when doing log(0)
 		if (count[i] == 0)
@@ -66,7 +66,6 @@ vector<string> string_split(string s, const char delimiter)
     return output;
 }
 
-
 // Argument 1 = huffman or lz77
 // Argument 2 = file name
 
@@ -76,23 +75,24 @@ int main(int argc, char* argv[]){
 
 	string fileName = "";
 	fileName = argv[1];
-	streampos filesize;
+	streampos fileSize;
 	char * memblock;
 
 	ifstream file(fileName, ios::in|ios::binary|ios::ate);
 
 	// Read file to memory
-
 	if(file.is_open()){
-		filesize = file.tellg();
-		memblock = new char [filesize + 1];
+		fileSize = file.tellg();
+		memblock = new char [fileSize + 1];
 		file.seekg(0, ios::beg);
-		file.read(memblock, filesize);
+		file.read(memblock, fileSize);
 		file.seekg(0,ios::beg);
-		memblock[filesize] = -1;
+		memblock[fileSize] = -1;
 	}
 
 	map<int, int> table;
+	int counter = 0;
+
 	while (true) {
 		int input = file.get();
 		if(input == -1){
@@ -105,11 +105,19 @@ int main(int argc, char* argv[]){
 		else{
 			table.insert(make_pair(input, 1));
 		}
+		counter++;
 	}
 
-	vector<string> splitStr = string_split(fileName, '.');
+	/*
+	for(auto it = table.begin();  it != table.end() ; it++){
+		cout << it->first << " " << it->second << endl;
+	}
+	*/
 
-	HuffmanEncode(table,splitStr[0], memblock, filesize);
+	vector<string> splitStr = string_split(fileName, '.');
+	ofstream outputFile("Encoded" + fileName, ios::binary|ios::ate);
+	cout << "Encoding file: " << fileName << endl;
+	HuffmanEncode(table,outputFile, memblock, fileSize);
 	file.close();
 return 0;
 }

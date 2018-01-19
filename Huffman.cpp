@@ -46,31 +46,6 @@ struct compare{
 	}
 };
 
-/*
-Node* HuffmanTree(char data[], int count[]){
-	class Node *left, *right, *parent;
-
-	priority_queue<Node*, vector<Node*>, compare> heap;
-
-	// Might need to modify this to not add bytes with 0 counts (they are not present in the file)
-	for(int i = 0; i < 256; i++){
-		heap.push(new LeafNode(data[i], count[i]));
-	}
-
-	while (heap.size() != 1) {
-		left = heap.top();
-		heap.pop();
-
-		right = heap.top();
-		heap.pop();
-
-		parent = new ParentNode(left, right);
-		heap.push(parent);
-	}
-	return heap.top();
-}
-*/
-
 Node* HuffmanTree(map<int, int> table){
 	priority_queue<Node*, vector<Node*>, compare> heap;
 
@@ -94,39 +69,6 @@ Node* HuffmanTree(map<int, int> table){
 	return heap.top();
 }
 
-/*
-Node* HuffmanTree(vector<int> v){
-	class Node *left, *right, *parent;
-
-	priority_queue<Node*, vector<Node*>, compare> heap;
-
-	// If a byte is not present in our data we simply just ignore it and keep on going.
-	for(int i = 0; i < 256; i++){
-		if(v[i] != 0){
-			heap.push(new LeafNode(i, v[i]));
-		}
-	}
-
-	int r = 0;
-
-	while (heap.size() != 1) {
-		printf("Round: %d\n", r);
-		left = heap.top();
-		printf("Left count: %d\n", left->count);
-		heap.pop();
-
-		right = heap.top();
-		printf("Right count: %d\n", right->count);
-		heap.pop();
-
-		parent = new ParentNode(left, right);
-		printf("Parent count: %d\n", parent->count);
-		heap.push(parent);
-		r++;
-	}
-	return heap.top();
-}
-*/
 map<int, string> HuffmanCode(Node* n, string c){
 	map<int, string> codeMap;
 	if(LeafNode* ln = dynamic_cast<LeafNode*>(n)){
@@ -145,54 +87,36 @@ map<int, string> HuffmanCode(Node* n, string c){
 	return codeMap;
 }
 
-/*
-map<int, vector<bool> > HuffmanCode(Node* n, vector<bool> code){
-	map<int, vector<bool> > res = map<int, vector<bool> >();
-
-	// If we reach a leaf node, we are at one of the bytes present in the file
-	// and we add the code we got so far together with the byte value into the map
-	if(LeafNode* ln = dynamic_cast<LeafNode*>(n)){
-		res[ln->data] = code;
-	}
-	// Otherwise we keep traversing down our tree adding a "0" for left and a "1" for right
-	else if(ParentNode* pn = dynamic_cast<ParentNode*>(n)){
-		vector<bool> left = code;
-		left.push_back(false);
-		map<int, vector<bool> > lRet = HuffmanCode(pn->left, left);
-		res.insert(lRet.begin(), lRet.end());
-
-		vector<bool> right = code;
-		right.push_back(true);
-		map<int, vector<bool> > rRet = HuffmanCode(pn->right, right);
-		res.insert(rRet.begin(), rRet.end());
-	}
-	return res;
-}
-*/
-
 // Use the above functions and make a file based on the encoding created.
-void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fileSize){
+void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileSize){
 	char* retMemblock;
 
 	Node* root = HuffmanTree(m);
 	map<int, string > encodingTable = HuffmanCode(root, "");
 
-	ofstream outputFile ("Encoded"+fileName, ofstream::binary);
+	/*
+	for(auto it = encodingTable.begin(); it != encodingTable.end(); it++){
+		cout << it->first << " " << it->second << endl;
+	}
+	*/
 
 	// Write heading to the file,
-	outputFile.put('{');
-	for(map<int, int>::const_iterator it = m.begin(); it != m.end(); ++it){
+	ofs.put('{');
+	for(auto it = m.begin(); it != m.end(); ++it){
 		if(it->first == 256){
 			continue;
 		}
 		if(it != m.begin()){
-			outputFile.put('|');
+			ofs.put('|');
 		}
-		outputFile.put(it->first);
-		outputFile.put(':');
-		outputFile.put((it->second + '0'));
+		ofs.put(it->first);
+		ofs.put(':');
+		string numStr = to_string(it->second);
+		for(size_t i = 0; i < numStr.size() ; i++){
+			ofs.put(numStr[i]);
+		}
 	}
-	outputFile.put('}');
+	ofs.put('}');
 
 	uint8_t c = 0x00;
 	int bitPos = 7;
@@ -202,7 +126,7 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 		int input = memblock[counter];
 
 		if(input == -1){
-			for(int i = 0; i < encodingTable.find(256)->second.size(); i++){
+			for(size_t i = 0; i < encodingTable.find(256)->second.size(); i++){
 				if((encodingTable.find(256)->second)[i] == '0'){
 					c &= ~(1 << bitPos);
 				}
@@ -210,7 +134,7 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 					c |= 1 << bitPos;
 				}
 				if(bitPos == 0){
-					outputFile.put(c);
+					ofs.put(c);
 					c = 0x00;
 					bitPos = 7;
 				}
@@ -218,12 +142,12 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 					bitPos--;
 				}
 			}
-			outputFile.put(c);
+			ofs.put(c);
 			break;
 		}
 
 		else{
-			for(int i = 0; i < encodingTable.find(input)->second.size(); i++){
+			for(size_t i = 0; i < encodingTable.find(input)->second.size(); i++){
 				if((encodingTable.find(input)->second)[i] == '0'){
 					c &= ~(1 << bitPos);
 				}
@@ -231,7 +155,7 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 					c |= 1 << bitPos;
 				}
 				if(bitPos == 0){
-					outputFile.put(c);
+					ofs.put(c);
 					c = 0x00;
 					bitPos = 7;
 				}
@@ -242,7 +166,8 @@ void HuffmanEncode(map<int, int>  m, string fileName, char* memblock, size_t fil
 		}
 		counter++;
 	}
-	outputFile.close();
+	ofs.close();
+	cout << "Encoding done!" << endl;
 }
 
 string getBit(unsigned char byte, int position){
@@ -285,6 +210,11 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 			break;
 		}
 	}
+	/*
+	for(auto it = countTable.begin(); it != countTable.end(); it++){
+		cout << it->first << " " << it->second << endl;
+	}
+	*/
 
 	// Build the tree from the count table
 	Node* root = HuffmanTree(countTable);
@@ -335,4 +265,6 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 			}
 		}
 	}
+	ofs.close();
+	cout << "Decoding done!" << endl;
 }
