@@ -88,7 +88,7 @@ map<int, string> HuffmanCode(Node* n, string c){
 }
 
 // Use the above functions and make a file based on the encoding created.
-void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileSize){
+void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, uint64_t fileSize){
 	char* retMemblock;
 
 	Node* root = HuffmanTree(m);
@@ -104,6 +104,7 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 	ofs.put('<');
 	ofs.put('\\');
 	for(auto it = m.begin(); it != m.end(); ++it){
+		cout << "Writing " << it->first << ":" << it->second << endl;
 		if(it->first == 256){
 			continue;
 		}
@@ -122,11 +123,11 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 
 	uint8_t c = 0x00;
 	int bitPos = 7;
-	int counter = 0;
+	uint64_t counter = 0;
 	int writtenBytesCounter = 0;
 
-	while(counter <= fileSize + 1){
-		int input = memblock[counter];
+	while(counter <= fileSize){
+		char input = memblock[counter];
 
 		if(input == -1){
 			for(size_t i = 0; i < encodingTable.find(256)->second.size(); i++){
@@ -177,6 +178,92 @@ void HuffmanEncode(map<int, int>  m, ofstream &ofs, char* memblock, size_t fileS
 	cout << "Encoding done!" << endl;
 }
 
+void HuffmanEncodeIFS(map<int, int>  m, ofstream &ofs, ifstream &ifs){
+	char* retMemblock;
+
+	Node* root = HuffmanTree(m);
+	map<int, string > encodingTable = HuffmanCode(root, "");
+
+	/*
+	for(auto it = encodingTable.begin(); it != encodingTable.end(); it++){
+		cout << it->first << " " << it->second << endl;
+	}
+	*/
+
+	// Write heading to the file,
+	ofs.put('<');
+	ofs.put('\\');
+	for(auto it = m.begin(); it != m.end(); ++it){
+		cout << "Writing " << it->first << ":" << it->second << endl;
+		if(it->first == 256){
+			continue;
+		}
+		if(it != m.begin()){
+			ofs.put('|');
+		}
+		ofs.put(it->first);
+		ofs.put(':');
+		string numStr = to_string(it->second);
+		for(size_t i = 0; i < numStr.size() ; i++){
+			ofs.put(numStr[i]);
+		}
+	}
+	ofs.put('/');
+	ofs.put('>');
+
+	uint8_t c = 0x00;
+	int bitPos = 7;
+	uint64_t counter = 0;
+	int writtenBytesCounter = 0;
+
+	int input = ifs.get();
+	while(!ifs.eof()){
+		for(size_t i = 0; i < encodingTable.find(input)->second.size(); i++){
+			if((encodingTable.find(input)->second)[i] == '0'){
+				c &= ~(1 << bitPos);
+			}
+			else{
+				c |= 1 << bitPos;
+			}
+			if(bitPos == 0){
+				writtenBytesCounter++;
+				ofs.put(c);
+				c = 0x00;
+				bitPos = 7;
+			}
+			else{
+				bitPos--;
+			}
+		}
+		counter++;
+		input = ifs.get();
+	}
+	if(ifs.eof()){
+		for(size_t i = 0; i < encodingTable.find(256)->second.size(); i++){
+			if((encodingTable.find(256)->second)[i] == '0'){
+				c &= ~(1 << bitPos);
+			}
+			else{
+				c |= 1 << bitPos;
+			}
+			if(bitPos == 0){
+				writtenBytesCounter++;
+				ofs.put(c);
+				c = 0x00;
+				bitPos = 7;
+			}
+			else{
+				bitPos--;
+			}
+		}
+		writtenBytesCounter++;
+		ofs.put(c);
+	}
+	ofs.close();
+	cout << "Wrote: " << writtenBytesCounter << " bytes to file!" << endl;
+	cout << "Encoding done!" << endl;
+}
+
 string getBit(unsigned char byte, int position){
 	return ((byte >> position) & 0x1) ? "1" : "0";
 }
@@ -198,10 +285,10 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 	ifs.get();
 	// Gets the following backslash "\"
 	ifs.get();
-	char c;
+	int c;
 	while((c = ifs.get()) != -1){
 		if(c == '/'){
-			char check = ifs.get();
+			int check = ifs.get();
 			if(check == '>'){
 				break;
 			}
@@ -218,8 +305,10 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 		char c2;
 		while((c2 = ifs.get())!= '|' && c2 != '/'){
 			cp += string(1,c2);
+			cout << cp << endl;
 			count = stoi(cp);
 		}
+		cout << "Inserting: " << c << ":" << count << endl;
 		countTable.insert(make_pair(c, count));
 		if(c2 == '/'){
 			ifs.get();
@@ -229,11 +318,11 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 	// Since we can't put "EOF" in the frequency table in the file, we just add it here manually
 	countTable.insert(make_pair(256, 1));
 
-	/*
+
 	for(auto it = countTable.begin(); it != countTable.end(); it++){
 		cout << it->first << " " << it->second << endl;
 	}
-	*/
+
 
 	// Build the tree from the count table
 	Node* root = HuffmanTree(countTable);

@@ -53,20 +53,22 @@ int main(int argc, char* argv[]){
 
 	string fileName = "";
 	fileName = argv[1];
-	streampos fileSize;
+	streampos fSize;
+ 	uint64_t fileSize;
 	char * memblock;
 
 	ifstream file(fileName, ios::in|ios::binary|ios::ate);
 
 	if(file.is_open()){
-		fileSize = file.tellg();
+		fSize = file.tellg();
+		fileSize = fSize;
 		memblock = new char [fileSize + 1];
 		file.seekg(0, ios::beg);
 		file.read(memblock, fileSize);
 		file.seekg(0,ios::beg);
 		memblock[fileSize] = -1;
 	}
-	vector<string> splitStr = string_split(fileName, '.');
+	//vector<string> splitStr = string_split(fileName, '.');
 
 	ofstream outputFile("Decoded" + fileName, ios::binary);
 

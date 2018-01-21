@@ -76,6 +76,7 @@ int main(int argc, char* argv[]){
 	string fileName = "";
 	fileName = argv[1];
 	streampos fileSize;
+	uint64_t fSize;
 	char * memblock;
 
 	ifstream file(fileName, ios::in|ios::binary|ios::ate);
@@ -83,42 +84,45 @@ int main(int argc, char* argv[]){
 	// Read file to memory
 	if(file.is_open()){
 		fileSize = file.tellg();
-		memblock = new char [fileSize + 1];
+		fSize = fileSize;
+		memblock = new char [fSize + 1];
 		file.seekg(0, ios::beg);
-		file.read(memblock, fileSize);
+		file.read(memblock, fSize);
 		file.seekg(0,ios::beg);
-		memblock[fileSize] = -1;
+		memblock[fSize] = -1;
 	}
 
 	map<int, int> table;
 	int counter = 0;
 
-	while (true) {
-		int input = file.get();
-		if(input == -1){
-			table.insert(make_pair(256, 1));
-			break;
-		}
+	int input = file.get();
+	while (!file.eof()) {
 		if(table.find(input) != table.end()){
 			table[input]++;
 		}
 		else{
+			cout << (int)input << endl;
 			table.insert(make_pair(input, 1));
 		}
 		counter++;
+		input = file.get();
+	}
+	if(file.eof()){
+		table.insert(make_pair(256, 1));
 	}
 
+	file.clear();
+	file.seekg(0, ios::beg);
 	/*
 	for(auto it = table.begin();  it != table.end() ; it++){
 		cout << it->first << " " << it->second << endl;
 	}
 	*/
 
-
-	vector<string> splitStr = string_split(fileName, '.');
 	ofstream outputFile("Encoded" + fileName, ios::binary|ios::out|ios::trunc);
 	cout << "Encoding file: " << fileName << endl;
-	HuffmanEncode(table,outputFile, memblock, fileSize);
+	//HuffmanEncode(table,outputFile, memblock, fSize);
+	HuffmanEncodeIFS(table, outputFile, file);
 	file.close();
 return 0;
 }
