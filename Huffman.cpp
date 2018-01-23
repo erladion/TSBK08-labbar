@@ -199,7 +199,7 @@ void HuffmanDecode(ifstream &ifs, ofstream &ofs){
 			}
 		}
 		else{
-			// Gets the :
+			// Gets the :	
 			ifs.get();
 		}
 
